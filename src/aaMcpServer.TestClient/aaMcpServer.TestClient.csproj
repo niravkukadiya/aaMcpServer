@@ -8,9 +8,12 @@
     <RootNamespace>aaMcpServer.TestClient</RootNamespace>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <AssemblyTitle>aa Mcp Server Test Client</AssemblyTitle>
-    <Product>aa Mcp Server Test Client</Product>
-    <Version>1.0.0</Version>
+    <AssemblyTitle>aa Mcp Test Client</AssemblyTitle>
+    <Product>aa Mcp Test Client</Product>
+    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
+    <ApplicationIcon>aaMcpServer.TestClient.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,7 +24,6 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <!-- Build-time only: enables compiling against net48 reference assemblies on any OS. -->
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
