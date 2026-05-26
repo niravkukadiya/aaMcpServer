@@ -1,0 +1,14 @@
+## Build output
+[Bb]in/
+[Oo]bj/
+*.user
+
+## Visual Studio
+.vs/
+*.suo
+*.userosscache
+*.sln.docstates
+
+## NuGet
+*.nupkg
+packages/
