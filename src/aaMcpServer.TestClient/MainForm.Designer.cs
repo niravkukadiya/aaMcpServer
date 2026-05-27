@@ -30,7 +30,6 @@ namespace aaMcpServer.TestClient
         private System.Windows.Forms.Label lblResult;
         private System.Windows.Forms.TextBox txtResult;
 
-        /// <summary>Clean up any resources being used.</summary>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -42,10 +41,6 @@ namespace aaMcpServer.TestClient
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
             this.pnlTop = new System.Windows.Forms.Panel();

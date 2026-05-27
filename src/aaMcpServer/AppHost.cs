@@ -49,12 +49,13 @@ namespace aaMcpServer
             //  See docs/CreateNewTool.md for a full walkthrough.
             var registry = new ToolRegistry();
             registry.Add(new SearchTagsTool(client, cfg));
+            registry.Add(new ProbeSchemaTool(client, cfg));
 
             var mcp = new McpServer(registry);
             _http = new StreamableHttpServer(cfg, mcp);
             _http.Start();
 
-            Log.Info("Server ready. Registered tools: his_search_tags.");
+            Log.Info("Server ready. Registered tools: his_search_tags, his_probe_schema.");
         }
 
         public void Stop()
