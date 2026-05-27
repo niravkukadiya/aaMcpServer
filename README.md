@@ -5,18 +5,63 @@ exposes the **AVEVA (Wonderware) Historian** to Microsoft Copilot. It speaks the
 **Streamable HTTP** transport that Copilot Studio expects, queries the Historian
 directly over SQL, and ships as a single self-contained Windows Service.
 
-This v1.2 release is a **lean demo + extensibility template**: the server registers
-just one tool out of the box (`his_search_tags`) and includes a comprehensive
-[`docs/CreateNewTool.md`](docs/CreateNewTool.md) walkthrough for adding more.
+This v1.4 release ships a **production tool surface** of 18 `his_*` tools plus a
+`his_probe_schema` diagnostic — designed around the AVEVA System Platform
+`<Object>.<Attribute>` naming convention so Copilot can answer plant questions
+naturally. See [`docs/CreateNewTool.md`](docs/CreateNewTool.md) for the extension
+recipe.
 
-## Out-of-the-box tool
+## Tools (v1.4)
 
+### Diagnostic
 | Tool | Purpose |
 | --- | --- |
-| `his_search_tags` | Find Historian tags by name/description, optionally filtered by type (analog/discrete/string). |
+| `his_probe_schema` | One-shot schema verification: runs ~18 probe queries to confirm all tables/views/columns this surface needs are present. Run once when connecting to a new Historian. |
 
-To add more tools (live values, history retrieval, alarms, Galaxy/GRAccess, anything
-else): see **[docs/CreateNewTool.md](docs/CreateNewTool.md)**.
+### Tier 1 — discovery and current state
+| Tool | Purpose |
+| --- | --- |
+| `his_search_tags` | Search tags by name / description / Alias (extended property). |
+| `his_list_objects` | List distinct AVEVA objects (substring before first dot) with attribute counts. |
+| `his_get_object_attributes` | List all attributes (tags) of one object. |
+| `his_get_object_snapshot` | Current value of every attribute of one object — "state of machine X right now". |
+| `his_get_live_values` | Current values for one or more specific tags. |
+| `his_get_value_at` | Value at a specific moment (Bounding retrieval — `time` accepts shorthand). |
+| `his_query_history` | Full time-series query with all 13 retrieval modes + `wwCycleCount` / `wwResolution`. |
+
+### Tier 2 — summaries
+| Tool | Purpose |
+| --- | --- |
+| `his_get_summary` | Min/Max/Avg/Integral/StdDev per interval (uses `AnalogSummaryHistory`). One call replaces 5 separate queries. |
+| `his_get_state_summary` | Time spent in each value/state for discrete tags (uses `StateSummaryHistory`). |
+
+### Tier 3 — detection
+| Tool | Purpose |
+| --- | --- |
+| `his_find_threshold_crossings` | Moments a value crossed a threshold (`wwEdgeDetection`). |
+| `his_find_state_changes` | Every value change for a tag (Delta retrieval). |
+| `his_compare_attribute_across_objects` | Same attribute across many objects at the current time. |
+
+### Tier 4 — alarms and events (all over the `Events` table)
+| Tool | Purpose |
+| --- | --- |
+| `his_query_alarms` | Alarms over a range, filtered by severity / area / type / state. |
+| `his_object_alarm_history` | All alarms for one Source_Object over a range. |
+| `his_get_alarm_timeline` | Full Set → Acknowledged → Clear lifecycle (self-joined on `Alarm_ID`). |
+| `his_alarm_stats` | Most-frequent alarm ranking (GROUP BY Source_Object, Source_ConditionVariable). |
+| `his_response_metrics` | Average acknowledge time per severity (or per user), per hour. |
+
+### Tier 5 — predictive
+| Tool | Purpose |
+| --- | --- |
+| `his_forecast_value` | Simple-linear-regression extrapolation (`wwFilter='SLR()'`). |
+
+All tools accept an optional `format: "compact" \| "table"` argument (default = server's
+`Output.Format`). Compact uses epoch-ms timestamps and drops constant columns —
+typically ~70% fewer tokens than the verbose pipe-table on history queries.
+
+All time arguments accept ISO / SQL datetimes **or** shorthand: `"now"`, `"today"`,
+`"yesterday"`, `"last 1h"`, `"30m ago"`, `"last 7d"`.
 
 ## Architecture
 

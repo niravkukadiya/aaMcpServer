@@ -1,7 +1,7 @@
 // ────────────────────────────────────────────────────────────
 //  Project     : aa Mcp Server
 //  Author      : NK
-//  Date        : 26-05-2026
+//  Date        : 27-05-2026
 // ────────────────────────────────────────────────────────────
 // Copyright 2026 The aaMcpServer Authors
 // SPDX-License-Identifier: Apache-2.0
@@ -13,9 +13,9 @@ using aaMcpServer.Tools;
 namespace aaMcpServer
 {
     /// <summary>
-    /// Wires the application together: config -> data layer -> tools -> MCP server ->
-    /// HTTP transport. Shared by both the console and the Windows Service hosts.
-    /// New tools are registered in <see cref="Start"/>; see CreateNewTool.md.
+    /// Wires the application together: config → data layer → tools → MCP server →
+    /// HTTP transport. New tools are registered in <see cref="Start"/>; see
+    /// docs/CreateNewTool.md for the recipe.
     /// </summary>
     public sealed class AppHost
     {
@@ -28,7 +28,7 @@ namespace aaMcpServer
             Log.Configure(cfg.LogDirectory, cfg.LogFilePrefix,
                 cfg.LogRotationHours, cfg.LogRetentionDays, cfg.LogMinLevel);
 
-            Log.Info("Starting aa Mcp Server...");
+            Log.Info("Starting aa Mcp Server v1.4...");
             Log.Info("Logging to " + cfg.LogDirectory + " (rotation " + cfg.LogRotationHours +
                      "h, retention " + cfg.LogRetentionDays + "d).");
             Log.Info("Output format default: " + cfg.OutputFormat +
@@ -48,14 +48,43 @@ namespace aaMcpServer
             //  To add a tool: implement ITool, then registry.Add(new YourTool(...));
             //  See docs/CreateNewTool.md for a full walkthrough.
             var registry = new ToolRegistry();
-            registry.Add(new SearchTagsTool(client, cfg));
+
+            // Diagnostic
             registry.Add(new ProbeSchemaTool(client, cfg));
+
+            // Tier 1 — object & tag discovery / current value
+            registry.Add(new SearchTagsTool(client, cfg));
+            registry.Add(new ListObjectsTool(client, cfg));
+            registry.Add(new GetObjectAttributesTool(client, cfg));
+            registry.Add(new GetObjectSnapshotTool(client, cfg));
+            registry.Add(new GetLiveValuesTool(client, cfg));
+            registry.Add(new GetValueAtTool(client, cfg));
+            registry.Add(new QueryHistoryTool(client, cfg));
+
+            // Tier 2 — summaries
+            registry.Add(new GetSummaryTool(client, cfg));
+            registry.Add(new GetStateSummaryTool(client, cfg));
+
+            // Tier 3 — detection / cross-equipment
+            registry.Add(new FindThresholdCrossingsTool(client, cfg));
+            registry.Add(new FindStateChangesTool(client, cfg));
+            registry.Add(new CompareAttributeAcrossObjectsTool(client, cfg));
+
+            // Tier 4 — alarms / events
+            registry.Add(new QueryAlarmsTool(client, cfg));
+            registry.Add(new ObjectAlarmHistoryTool(client, cfg));
+            registry.Add(new GetAlarmTimelineTool(client, cfg));
+            registry.Add(new AlarmStatsTool(client, cfg));
+            registry.Add(new ResponseMetricsTool(client, cfg));
+
+            // Tier 5 — predictive
+            registry.Add(new ForecastValueTool(client, cfg));
 
             var mcp = new McpServer(registry);
             _http = new StreamableHttpServer(cfg, mcp);
             _http.Start();
 
-            Log.Info("Server ready. Registered tools: his_search_tags, his_probe_schema.");
+            Log.Info("Server ready. 19 tools registered (1 diagnostic + 18 his_*).");
         }
 
         public void Stop()

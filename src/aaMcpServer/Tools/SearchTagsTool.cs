@@ -1,7 +1,7 @@
 // ────────────────────────────────────────────────────────────
 //  Project     : aa Mcp Server
 //  Author      : NK
-//  Date        : 26-05-2026
+//  Date        : 27-05-2026
 // ────────────────────────────────────────────────────────────
 // Copyright 2026 The aaMcpServer Authors
 // SPDX-License-Identifier: Apache-2.0
@@ -28,11 +28,10 @@ namespace aaMcpServer.Tools
         public string Name => "his_search_tags";
 
         public string Description =>
-            "Search the AVEVA Historian tag dictionary for tags whose name or description " +
-            "matches a search term. Use this first to discover exact tag names before calling " +
-            "his_get_live_values or his_query_history. Returns tag name, description and type. " +
-            "Output defaults to a compact, token-efficient format; pass format='table' for a " +
-            "human-friendly pipe-separated table.";
+            "Search the AVEVA Historian tag dictionary by name, description or Alias (an " +
+            "extended property often used as the user-friendly label). Use this first to " +
+            "discover exact tagnames before calling his_get_live_values, his_query_history, " +
+            "etc. Returns TagName, Alias (if configured), Description and TagType.";
 
         public JObject InputSchema => new JObject
         {
@@ -42,7 +41,8 @@ namespace aaMcpServer.Tools
                 ["query"] = new JObject
                 {
                     ["type"] = "string",
-                    ["description"] = "Text to match against tag name or description.",
+                    ["description"] = "Text to match against TagName, Description or Alias " +
+                        "(substring, case-insensitive). Omit to list.",
                 },
                 ["tagType"] = new JObject
                 {
@@ -53,14 +53,13 @@ namespace aaMcpServer.Tools
                 ["limit"] = new JObject
                 {
                     ["type"] = "integer",
-                    ["description"] = "Maximum number of tags to return (1-500, default 50).",
+                    ["description"] = "Maximum tags to return (1-500, default 50).",
                 },
                 ["format"] = new JObject
                 {
                     ["type"] = "string",
                     ["enum"] = new JArray { "compact", "table" },
-                    ["description"] = "Output format. Default = server's Output.Format ('compact'). " +
-                        "'compact' = CSV with short header; 'table' = pipe-separated table.",
+                    ["description"] = "Output format. Default = server's Output.Format.",
                 },
             },
             ["required"] = new JArray(),
@@ -74,9 +73,10 @@ namespace aaMcpServer.Tools
 
             var conditions = new List<string>();
             var parameters = new List<SqlParameter>();
+
             if (!string.IsNullOrWhiteSpace(query))
             {
-                conditions.Add("(t.TagName LIKE @pat OR t.Description LIKE @pat)");
+                conditions.Add("(t.TagName LIKE @pat OR t.Description LIKE @pat OR a.PropertyValue LIKE @pat)");
                 parameters.Add(new SqlParameter("@pat", "%" + query + "%"));
             }
             switch (tagType)
@@ -89,13 +89,22 @@ namespace aaMcpServer.Tools
                     throw new ToolException("Invalid tagType '" + tagType +
                         "'. Use all, analog, discrete or string.");
             }
+
             var where = conditions.Count > 0 ? " WHERE " + string.Join(" AND ", conditions) : "";
-            var sql = "SELECT TOP (" + limit + ") t.TagName, t.Description, t.TagType " +
-                      "FROM Tag t" + where + " ORDER BY t.TagName";
+            // LEFT JOIN to TagExtendedPropertyInfo for the optional Alias property. If the
+            // view doesn't exist on this install the query will fail at SQL level — the
+            // installer should remove this LEFT JOIN if so.
+            var sql =
+                "SELECT TOP (" + limit + ") t.TagName, a.PropertyValue AS Alias, " +
+                "  t.Description, t.TagType " +
+                "FROM Tag t " +
+                "LEFT OUTER JOIN TagExtendedPropertyInfo a " +
+                "  ON a.TagName = t.TagName AND a.PropertyName = 'Alias'" +
+                where + " ORDER BY t.TagName";
 
             var result = _client.Run(sql, limit, parameters.ToArray());
             return PickFormat(args, _cfg) == "compact"
-                ? CompactFormatter.FormatTable(result, "his_search_tags", _cfg.HistorianTimesAreUtc,
+                ? CompactFormatter.FormatTable(result, Name, _cfg.HistorianTimesAreUtc,
                     "No tags matched the search.")
                 : result.ToText("No tags matched the search.");
         }
