@@ -6,7 +6,6 @@
 // Copyright 2026 The aaMcpServer Authors
 // SPDX-License-Identifier: Apache-2.0
 using System;
-using System.Collections.Generic;
 using System.Configuration;
 using System.Data.SqlClient;
 using System.IO;
@@ -26,11 +25,7 @@ namespace aaMcpServer
         public string ExtraConnectionOptions { get; private set; }
         public bool HistorianTimesAreUtc { get; private set; }
 
-        public string AlarmsSource { get; private set; }
-        public string AlarmsTimeColumn { get; private set; }
-
         public int MaxRows { get; private set; }
-
         public string OutputFormat { get; private set; }   // "compact" | "table"
 
         public string LogDirectory { get; private set; }
@@ -38,13 +33,6 @@ namespace aaMcpServer
         public int LogRotationHours { get; private set; }
         public int LogRetentionDays { get; private set; }
         public int LogMinLevel { get; private set; }
-
-        public bool GalaxyEnabled { get; private set; }
-        public string GalaxyNode { get; private set; }
-        public string GalaxyName { get; private set; }
-        public string GalaxyUser { get; private set; }
-        public string GalaxyPassword { get; private set; }
-        public string[] GalaxyProgIds { get; private set; }
 
         public static ServiceConfig Load()
         {
@@ -61,11 +49,7 @@ namespace aaMcpServer
                 ExtraConnectionOptions = Get("Historian.ExtraConnectionOptions", ""),
                 HistorianTimesAreUtc = GetBool("Historian.TimesAreUtc", false),
 
-                AlarmsSource = Get("Alarms.Source", "v_AlarmEventHistory"),
-                AlarmsTimeColumn = Get("Alarms.TimeColumn", "EventStamp"),
-
                 MaxRows = GetInt("Limits.MaxRows", 5000),
-
                 OutputFormat = NormaliseFormat(Get("Output.Format", "compact")),
 
                 LogDirectory = Get("Log.Directory", "logs"),
@@ -73,14 +57,6 @@ namespace aaMcpServer
                 LogRotationHours = GetInt("Log.RotationHours", 6),
                 LogRetentionDays = GetInt("Log.RetentionDays", 7),
                 LogMinLevel = ParseLevel(Get("Log.MinLevel", "INFO")),
-
-                GalaxyEnabled = GetBool("Galaxy.Enabled", false),
-                GalaxyNode = Get("Galaxy.Node", ""),
-                GalaxyName = Get("Galaxy.Name", ""),
-                GalaxyUser = Get("Galaxy.User", ""),
-                GalaxyPassword = Get("Galaxy.Password", ""),
-                GalaxyProgIds = SplitCsv(Get("Galaxy.ProgIds",
-                    "ArchestrA.GRAccessApp,ArchestrA.GRAccessApp.4,ArchestrA.GRAccessApp.5,ArchestrA.GRAccessApp.6")),
             };
 
             if (!Path.IsPathRooted(cfg.LogDirectory))
@@ -136,19 +112,6 @@ namespace aaMcpServer
             var v = ConfigurationManager.AppSettings[key];
             bool parsed;
             return bool.TryParse(v, out parsed) ? parsed : fallback;
-        }
-
-        private static string[] SplitCsv(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) return new string[0];
-            var parts = value.Split(',');
-            var list = new List<string>(parts.Length);
-            foreach (var p in parts)
-            {
-                var t = p.Trim();
-                if (t.Length > 0) list.Add(t);
-            }
-            return list.ToArray();
         }
 
         private static string NormaliseFormat(string value)

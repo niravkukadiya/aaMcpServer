@@ -5,7 +5,6 @@
 // ────────────────────────────────────────────────────────────
 // Copyright 2026 The aaMcpServer Authors
 // SPDX-License-Identifier: Apache-2.0
-using aaMcpServer.Galaxy;
 using aaMcpServer.Historian;
 using aaMcpServer.Http;
 using aaMcpServer.Mcp;
@@ -13,10 +12,14 @@ using aaMcpServer.Tools;
 
 namespace aaMcpServer
 {
+    /// <summary>
+    /// Wires the application together: config -> data layer -> tools -> MCP server ->
+    /// HTTP transport. Shared by both the console and the Windows Service hosts.
+    /// New tools are registered in <see cref="Start"/>; see CreateNewTool.md.
+    /// </summary>
     public sealed class AppHost
     {
         private StreamableHttpServer _http;
-        private GalaxyClient _galaxy;
 
         public void Start()
         {
@@ -28,8 +31,8 @@ namespace aaMcpServer
             Log.Info("Starting aa Mcp Server...");
             Log.Info("Logging to " + cfg.LogDirectory + " (rotation " + cfg.LogRotationHours +
                      "h, retention " + cfg.LogRetentionDays + "d).");
-            Log.Info("Output format default: " + cfg.OutputFormat + " (Historian.TimesAreUtc=" +
-                     cfg.HistorianTimesAreUtc + ").");
+            Log.Info("Output format default: " + cfg.OutputFormat +
+                     " (Historian.TimesAreUtc=" + cfg.HistorianTimesAreUtc + ").");
             Log.Info("Historian target: " + cfg.HistorianServer + " / " + cfg.HistorianDatabase +
                      " (user '" + cfg.HistorianUser + "')");
 
@@ -41,37 +44,17 @@ namespace aaMcpServer
             else
                 Log.Info("Historian connection test OK.");
 
+            // ── Tool registry ────────────────────────────────────────────
+            //  To add a tool: implement ITool, then registry.Add(new YourTool(...));
+            //  See docs/CreateNewTool.md for a full walkthrough.
             var registry = new ToolRegistry();
             registry.Add(new SearchTagsTool(client, cfg));
-            registry.Add(new GetLiveValuesTool(client, cfg));
-            registry.Add(new QueryHistoryTool(client, cfg));
-            registry.Add(new QueryAlarmsEventsTool(client, cfg));
-
-            if (cfg.GalaxyEnabled && !string.IsNullOrWhiteSpace(cfg.GalaxyNode) &&
-                !string.IsNullOrWhiteSpace(cfg.GalaxyName))
-            {
-                _galaxy = new GalaxyClient(cfg);
-                var galaxyErr = _galaxy.TestConnection();
-                if (galaxyErr != null)
-                    Log.Warn("Galaxy connection test FAILED: " + galaxyErr +
-                             " - gr_* tools will return this error until resolved.");
-                else
-                    Log.Info("Galaxy connection OK ('" + cfg.GalaxyName + "' on '" + cfg.GalaxyNode + "').");
-
-                registry.Add(new GalaxyListObjectsTool(_galaxy, cfg));
-                registry.Add(new GalaxyGetObjectTool(_galaxy));
-                Log.Info("Galaxy tools registered: gr_list_objects, gr_get_object.");
-            }
-            else
-            {
-                Log.Info("Galaxy tools NOT registered (Galaxy.Enabled is false or Node/Name missing).");
-            }
 
             var mcp = new McpServer(registry);
             _http = new StreamableHttpServer(cfg, mcp);
             _http.Start();
 
-            Log.Info("Server ready.");
+            Log.Info("Server ready. Registered tools: his_search_tags.");
         }
 
         public void Stop()
@@ -80,11 +63,6 @@ namespace aaMcpServer
             {
                 _http.Stop();
                 _http = null;
-            }
-            if (_galaxy != null)
-            {
-                try { _galaxy.Dispose(); } catch { }
-                _galaxy = null;
             }
             Log.Info("Server stopped.");
             Log.Shutdown();
